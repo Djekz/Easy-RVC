@@ -5,10 +5,16 @@ from typing import List, Union
 import os, shutil, fnmatch
 
 
-
 class Channel:
 
-    def __init__(self,source,destination,sync_deletions=False,every=60,exclude: Union[str, List, None] = None):
+    def __init__(
+        self,
+        source,
+        destination,
+        sync_deletions=False,
+        every=60,
+        exclude: Union[str, List, None] = None,
+    ):
 
         self.source = source
 
@@ -16,7 +22,7 @@ class Channel:
 
         self.event = threading.Event()
 
-        self.syncing_thread = threading.Thread(target=self._sync,args=())
+        self.syncing_thread = threading.Thread(target=self._sync, args=())
 
         self.sync_deletions = sync_deletions
 
@@ -26,17 +32,15 @@ class Channel:
 
             exclude = []
 
-        if isinstance(exclude,str):
+        if isinstance(exclude, str):
 
             exclude = [exclude]
 
         self.exclude = exclude
 
-        self.command = ['rsync','-aP']
+        self.command = ["rsync", "-aP"]
 
-
-
-    def alive(self):#Check if the thread is alive
+    def alive(self):  # Check if the thread is alive
 
         if self.syncing_thread.is_alive():
 
@@ -46,21 +50,19 @@ class Channel:
 
             return False
 
-
-
-    def _sync(self):#Sync constantly
+    def _sync(self):  # Sync constantly
 
         command = self.command
 
         for exclusion in self.exclude:
 
-            command.append(f'--exclude={exclusion}')
+            command.append(f"--exclude={exclusion}")
 
-        command.extend([f'{self.source}/',f'{self.destination}/'])
+        command.extend([f"{self.source}/", f"{self.destination}/"])
 
-        if self.sync_deletions:    
+        if self.sync_deletions:
 
-            command.append('--delete')
+            command.append("--delete")
 
         while not self.event.is_set():
 
@@ -68,31 +70,27 @@ class Channel:
 
             time.sleep(self.every)
 
-
-
-    def copy(self):#Sync once
+    def copy(self):  # Sync once
 
         command = self.command
 
         for exclusion in self.exclude:
 
-            command.append(f'--exclude={exclusion}')
+            command.append(f"--exclude={exclusion}")
 
-        command.extend([f'{self.source}/',f'{self.destination}/'])
+        command.extend([f"{self.source}/", f"{self.destination}/"])
 
-        if self.sync_deletions:    
+        if self.sync_deletions:
 
-            command.append('--delete')
+            command.append("--delete")
 
         subprocess.run(command)
 
         return True
 
-    
+    def start(self):  # Handle threads
 
-    def start(self):#Handle threads
-
-        if self.syncing_thread.is_alive():#Check if it's running
+        if self.syncing_thread.is_alive():  # Check if it's running
 
             self.event.set()
 
@@ -102,17 +100,17 @@ class Channel:
 
             self.event.clear()
 
-        if self.syncing_thread._started.is_set():#If it has been started before
+        if self.syncing_thread._started.is_set():  # If it has been started before
 
-            self.syncing_thread = threading.Thread(target=self._sync,args=())#Create a FRESH thread
+            self.syncing_thread = threading.Thread(
+                target=self._sync, args=()
+            )  # Create a FRESH thread
 
-        self.syncing_thread.start()#Start the thread
+        self.syncing_thread.start()  # Start the thread
 
         return self.alive()
 
-
-
-    def stop(self):#Stop the thread and close the process
+    def stop(self):  # Stop the thread and close the process
 
         if self.alive():
 
@@ -128,35 +126,30 @@ class Channel:
 
         return not self.alive()
 
-    
 
 class GarbageMan:
 
     def __init__(self) -> None:
 
-        self.thread = threading.Thread(target=self.take_out,args=())
+        self.thread = threading.Thread(target=self.take_out, args=())
 
         self.event = threading.Event()
 
-
-
     def destroy(self, trash):
 
-        if not isinstance(trash,dict):
+        if not isinstance(trash, dict):
 
-            if os.path.isdir(os.path.join(self.path,trash)):
+            if os.path.isdir(os.path.join(self.path, trash)):
 
-                shutil.rmtree(os.path.join(self.path,trash))
+                shutil.rmtree(os.path.join(self.path, trash))
 
-            elif os.path.isfile(os.path.join(self.path,trash)):
+            elif os.path.isfile(os.path.join(self.path, trash)):
 
-                os.remove(os.path.join(self.path,trash))
+                os.remove(os.path.join(self.path, trash))
 
         else:
 
             trash.Delete()
-
-
 
     def take_out(self) -> None:
 
@@ -164,15 +157,13 @@ class GarbageMan:
 
             for object in self.garbage:
 
-                trash = object["title"] if isinstance(object,dict) else object
+                trash = object["title"] if isinstance(object, dict) else object
 
-                if fnmatch.fnmatch(trash,self.pattern):
+                if fnmatch.fnmatch(trash, self.pattern):
 
                     self.destroy(object)
 
             time.sleep(self.every)
-
-
 
     def stop(self) -> None:
 
@@ -186,19 +177,17 @@ class GarbageMan:
 
         if self.thread._started.is_set():
 
-            self.thread = threading.Thread(target=self.take_out,args=())
+            self.thread = threading.Thread(target=self.take_out, args=())
 
+    def start(self, path: Union[str, List], every: int = 30, pattern: str = "") -> None:
 
-
-    def start(self,path: Union[str,List],every:int=30,pattern: str='') -> None:
-
-        if isinstance(path,list):
+        if isinstance(path, list):
 
             self.path = None
 
             self.garbage = path
 
-        elif isinstance(path,str):
+        elif isinstance(path, str):
 
             self.path = path
 
@@ -218,26 +207,24 @@ class GarbageMan:
 
         self.thread.start()
 
-
-
     def _fake(self, trash):
 
-        if not isinstance(trash,dict):
+        if not isinstance(trash, dict):
 
-            if os.path.isdir(os.path.join(self.path,trash)):
+            if os.path.isdir(os.path.join(self.path, trash)):
 
-                with open("log.txt","a") as f:
+                with open("log.txt", "a") as f:
 
                     f.write(f"Fake deleted dir: {trash}")
 
-            elif os.path.isfile(os.path.join(self.path,trash)):
+            elif os.path.isfile(os.path.join(self.path, trash)):
 
-                with open("log.txt","a") as f:
+                with open("log.txt", "a") as f:
 
                     f.write(f"Fake deleted file: {trash}")
 
         else:
 
-            with open("log.txt","a") as f:
+            with open("log.txt", "a") as f:
 
-                    f.write(f"Fake permanently deleted: {trash['title']}")
+                f.write(f"Fake permanently deleted: {trash['title']}")
